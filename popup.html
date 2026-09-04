@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>WhatsApp 翻译助手设置</title>
+<style>
+  :root {
+    --ink: #1c2b2d;
+    --muted: #5b6b6d;
+    --line: #dfe6e6;
+    --accent: #2f8f7f;
+    --bg: #fbfdfc;
+  }
+  * { box-sizing: border-box; }
+  body {
+    width: 300px;
+    margin: 0;
+    padding: 18px;
+    font-family: -apple-system, "Segoe UI", "PingFang SC", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+  }
+  h1 {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0 0 4px;
+  }
+  p.hint {
+    margin: 0 0 16px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  label {
+    display: block;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 4px;
+    margin-top: 12px;
+  }
+  input, select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-size: 13px;
+    background: #fff;
+    color: var(--ink);
+  }
+  input:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .engine-block {
+    display: none;
+    padding: 10px 12px;
+    margin-top: 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+  }
+  .engine-block.active { display: block; }
+  .engine-block label { margin-top: 0; }
+  .engine-block label + label { margin-top: 10px; }
+  button {
+    width: 100%;
+    margin-top: 16px;
+    padding: 9px;
+    border: none;
+    border-radius: 6px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:hover { opacity: 0.92; }
+  .usage-box {
+    margin-top: 14px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+  }
+  .usage-text {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .usage-bar {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: #eef2f2;
+    overflow: hidden;
+  }
+  .usage-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    width: 0%;
+    transition: width 0.2s ease;
+  }
+  .usage-bar-fill.warn { background: #d97706; }
+  .usage-bar-fill.danger { background: #c0392b; }
+  .secondary-btn {
+    width: 100%;
+    margin-top: 8px;
+    padding: 6px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .secondary-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .engine-hint {
+    display: none;
+    margin-top: 6px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .engine-hint.show { display: block; }
+  .engine-hint button {
+    width: auto;
+    margin: 6px 0 0;
+    padding: 4px 10px;
+    font-size: 12px;
+    background: #92400e;
+  }
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 4px;
+  }
+  .toggle-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 38px;
+    height: 22px;
+    flex-shrink: 0;
+  }
+  .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: #d8dfdf;
+    border-radius: 22px;
+    transition: 0.2s;
+  }
+  .slider::before {
+    content: "";
+    position: absolute;
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 3px;
+    background: #fff;
+    border-radius: 50%;
+    transition: 0.2s;
+  }
+  .switch input:checked + .slider {
+    background: var(--accent);
+  }
+  .switch input:checked + .slider::before {
+    transform: translateX(16px);
+  }
+  #status {
+    margin-top: 10px;
+    font-size: 12px;
+    min-height: 16px;
+  }
+  #status.ok { color: var(--accent); }
+  #status.err { color: #c0392b; }
+</style>
+</head>
+<body>
+  <h1>WhatsApp 翻译助手</h1>
+
+  <div class="toggle-row">
+    <span class="toggle-label">启用翻译功能</span>
+    <label class="switch">
+      <input type="checkbox" id="enabledToggle" />
+      <span class="slider"></span>
+    </label>
+  </div>
+  <p class="hint" id="enabledHint">选择翻译引擎、填写对应的 API Key，再选好你的语言即可。</p>
+
+  <label for="engine">翻译引擎</label>
+  <select id="engine">
+    <option value="deepl">DeepL</option>
+    <option value="google">Google Translate</option>
+  </select>
+
+  <div id="deeplBlock" class="engine-block">
+    <label for="deeplKey">DeepL API Key</label>
+    <input id="deeplKey" type="password" placeholder="在 deepl.com 免费注册获取" />
+    <label for="deeplHost">API 版本</label>
+    <select id="deeplHost">
+      <option value="https://api-free.deepl.com">免费版 (Free)</option>
+      <option value="https://api.deepl.com">付费版 (Pro)</option>
+    </select>
+  </div>
+
+  <div id="googleBlock" class="engine-block">
+    <label for="googleKey">Google Translate API Key</label>
+    <input id="googleKey" type="password" placeholder="在 Google Cloud 控制台获取" />
+  </div>
+
+  <label for="myLang">我的语言</label>
+  <select id="myLang"></select>
+  <div id="engineHint" class="engine-hint"></div>
+
+  <label for="monthlyLimit">每月字符额度上限</label>
+  <input id="monthlyLimit" type="number" min="1000" step="1000" placeholder="例如 450000" />
+
+  <div id="usageBox" class="usage-box">
+    <div class="usage-text" id="usageText">本月已用 0 / 0 字符</div>
+    <div class="usage-bar"><div class="usage-bar-fill" id="usageBarFill"></div></div>
+    <button id="resetUsageBtn" type="button" class="secondary-btn">重置本月用量</button>
+  </div>
+
+  <button id="saveBtn">保存设置</button>
+  <div id="status"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

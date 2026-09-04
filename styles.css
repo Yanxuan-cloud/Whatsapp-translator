@@ -1,0 +1,159 @@
+/* ---------- 译文行（收消息） ---------- */
+.wa-translate-line {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.15);
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.55);
+  font-style: italic;
+  white-space: pre-wrap;
+}
+
+/* WhatsApp Web 深色模式适配 */
+body.dark .wa-translate-line,
+.dark .wa-translate-line {
+  border-top-color: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* ---------- 额度警告横幅 ---------- */
+#wa-translate-quota-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 99999;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 13px;
+  padding: 8px 16px;
+  text-align: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+/* ---------- 发消息时的译文建议条 ---------- */
+.wa-translate-suggest-box {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 8px 6px;
+  padding: 6px 12px;
+  background: #eafaf6;
+  border: 1px solid #b6e3d4;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.wa-translate-suggest-box.show {
+  display: flex;
+}
+
+.wa-translate-suggest-text {
+  flex: 1;
+  color: #1c2b2d;
+  white-space: pre-wrap;
+}
+
+.wa-translate-suggest-copy {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border: 1px solid #2f8f7f;
+  border-radius: 6px;
+  background: #fff;
+  color: #2f8f7f;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wa-translate-suggest-copy:hover {
+  background: #2f8f7f;
+  color: #fff;
+}
+
+/* 深色模式适配建议条 */
+body.dark .wa-translate-suggest-box,
+.dark .wa-translate-suggest-box {
+  background: #1a2826;
+  border-color: #2d4a45;
+}
+
+body.dark .wa-translate-suggest-text,
+.dark .wa-translate-suggest-text {
+  color: #e0e0e0;
+}
+
+body.dark .wa-translate-suggest-copy,
+.dark .wa-translate-suggest-copy {
+  background: #2a3a38;
+  border-color: #3d6b62;
+  color: #6dd4c0;
+}
+
+body.dark .wa-translate-suggest-copy:hover,
+.dark .wa-translate-suggest-copy:hover {
+  background: #3d6b62;
+  color: #fff;
+}
+
+/* ---------- 首次使用风险告知弹窗 ---------- */
+#wa-translate-risk-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.wa-translate-risk-modal {
+  max-width: 480px;
+  width: 100%;
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+  font-family: -apple-system, "Segoe UI", "PingFang SC", sans-serif;
+}
+
+.wa-translate-risk-modal h2 {
+  margin: 0 0 12px;
+  font-size: 17px;
+  color: #1c2b2d;
+}
+
+.wa-translate-risk-modal p {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #3f4b4c;
+}
+
+.wa-translate-risk-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.wa-translate-risk-actions button {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+}
+
+#wa-translate-risk-agree {
+  background: #2f8f7f;
+  color: #fff;
+}
+
+#wa-translate-risk-decline {
+  background: #f1f5f4;
+  color: #5b6b6d;
+}

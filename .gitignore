@@ -1,0 +1,33 @@
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+build/
+*.zip
+*.crx
+*.pem
+
+# IDE / 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# API Key 本地测试文件（切勿提交真实密钥）
+*.env
+.env.local
+test-keys.json
+
+# 图标源文件和临时文件
+icons/icon_source.*
+issue-report.html
+
+# 日志
+*.log
+npm-debug.log*
