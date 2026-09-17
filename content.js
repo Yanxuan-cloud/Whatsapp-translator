@@ -58,7 +58,7 @@ const SELECTORS = {
   ].join(",")
 };
 
-const VERSION = "0.2.2"; // 诊断时展示，方便确认用户实际运行的代码版本
+const VERSION = "0.2.3"; // 诊断时展示，方便确认用户实际运行的代码版本
 
 let MY_LANG = "zh"; // 标准两字母语言代码（canonical），如 zh / en / ja
 let ENGINE_ACTIVE = false; // 风险告知已同意 且 用户开关处于"启用"，两者都满足才为 true

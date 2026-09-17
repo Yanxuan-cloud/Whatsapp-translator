@@ -2,6 +2,12 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [0.2.3] - 2026-09
+
+### 修复（关键）
+- 修复 DeepL 返回 403 "Missing Authorization header" 导致翻译全部失败的问题：API Key 改为通过 `Authorization: DeepL-Auth-Key` 请求头传递（同时保留表单参数兼容），适配 DeepL 当前认证要求和部分代理网络环境
+- DeepL 429 限流错误增加中文说明
+
 ## [0.2.2] - 2026-09
 
 ### 新增

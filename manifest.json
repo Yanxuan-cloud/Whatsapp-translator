@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "WhatsApp 双语翻译助手",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "在 WhatsApp Web 上显示收到消息的翻译，发消息时提供译文建议供手动复制，不代替用户自动发送",
   "permissions": ["storage"],
   "host_permissions": [

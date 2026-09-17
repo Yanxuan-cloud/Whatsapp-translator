@@ -101,6 +101,8 @@ async function callDeepL({ text, targetCanonical, sourceCanonical, deeplKey, dee
   }
 
   const params = new URLSearchParams();
+  // 同时保留 auth_key 表单参数作为兼容兜底，但以 Authorization 请求头为主
+  // （实测部分网络环境/代理下 DeepL 只识别请求头，返回 403 "Missing Authorization header"）
   params.set("auth_key", deeplKey);
   params.set("text", text);
   params.set("target_lang", targetDeeplCode);
@@ -114,7 +116,10 @@ async function callDeepL({ text, targetCanonical, sourceCanonical, deeplKey, dee
   try {
     resp = await fetch(`${deeplHost}/v2/translate`, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: `DeepL-Auth-Key ${deeplKey}`
+      },
       body: params.toString()
     });
   } catch (networkErr) {
@@ -136,6 +141,9 @@ async function callDeepL({ text, targetCanonical, sourceCanonical, deeplKey, dee
     }
     if (resp.status === 456) {
       throw new Error("DeepL 本月免费额度已用完（456 quota exceeded），请下月再用、更换账号或切换 Google 引擎。");
+    }
+    if (resp.status === 429) {
+      throw new Error("DeepL 请求过于频繁被限流（429）。请稍等片刻再点重试；如果反复出现，请确认使用的是最新版插件。");
     }
     throw new Error(`DeepL 请求失败 (${resp.status}): ${errText}`);
   }
