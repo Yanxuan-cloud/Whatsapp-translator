@@ -110,14 +110,33 @@ async function callDeepL({ text, targetCanonical, sourceCanonical, deeplKey, dee
     // 源语言 DeepL 不支持时，不传 source_lang，让 DeepL 自动检测，好过直接报错
   }
 
-  const resp = await fetch(`${deeplHost}/v2/translate`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: params.toString()
-  });
+  let resp;
+  try {
+    resp = await fetch(`${deeplHost}/v2/translate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params.toString()
+    });
+  } catch (networkErr) {
+    throw new Error(
+      `无法连接 DeepL 服务器（${deeplHost}）：${networkErr.message}。` +
+        "请检查网络/VPN 是否能访问 DeepL；浏览器代理插件也可能拦截该请求。"
+    );
+  }
 
   if (!resp.ok) {
-    const errText = await resp.text();
+    const errText = await resp.text().catch(() => "");
+    if (resp.status === 403 || resp.status === 401) {
+      const isFreeHost = deeplHost.includes("api-free");
+      throw new Error(
+        `DeepL 认证失败 (${resp.status})。最常见原因：Key 填错，或免费版 Key 与付费版主机不匹配` +
+          `（当前主机：${deeplHost}，${isFreeHost ? "免费版 api-free" : "付费版 api"}主机）。` +
+          "DeepL 免费版 Key 必须使用 https://api-free.deepl.com，付费版使用 https://api.deepl.com，请在插件设置里核对。"
+      );
+    }
+    if (resp.status === 456) {
+      throw new Error("DeepL 本月免费额度已用完（456 quota exceeded），请下月再用、更换账号或切换 Google 引擎。");
+    }
     throw new Error(`DeepL 请求失败 (${resp.status}): ${errText}`);
   }
 
@@ -140,17 +159,31 @@ async function callGoogleTranslate({ text, targetCanonical, sourceCanonical, goo
   };
   if (sourceCanonical) body.source = googleCodeFor(sourceCanonical);
 
-  const resp = await fetch("https://translation.googleapis.com/language/translate/v2", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-goog-api-key": googleKey
-    },
-    body: JSON.stringify(body)
-  });
+  let resp;
+  try {
+    resp = await fetch("https://translation.googleapis.com/language/translate/v2", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": googleKey
+      },
+      body: JSON.stringify(body)
+    });
+  } catch (networkErr) {
+    throw new Error(
+      `无法连接 Google Translate 服务器：${networkErr.message}。` +
+        "Google API 在国内通常无法直连，请确认 VPN/代理已对浏览器全局生效（仅系统代理可能不够）。"
+    );
+  }
 
   if (!resp.ok) {
-    const errText = await resp.text();
+    const errText = await resp.text().catch(() => "");
+    if (resp.status === 400 && errText.includes("API key")) {
+      throw new Error("Google Translate API Key 无效或未启用 Cloud Translation API，请核对 Key 并在 Google Cloud 控制台启用该服务。");
+    }
+    if (resp.status === 403) {
+      throw new Error("Google Translate 拒绝访问 (403)：请检查 API Key 限制设置（建议先设为「不限制」测试），并确认账单账号/试用额度状态。");
+    }
     throw new Error(`Google Translate 请求失败 (${resp.status}): ${errText}`);
   }
 

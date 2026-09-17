@@ -1,4 +1,4 @@
-# WhatsApp 双语翻译助手（v0.2.1）
+# WhatsApp 双语翻译助手（v0.2.2）
 
 <p>
   <img src="icons/icon128.png" width="64" height="64" alt="WhatsApp 翻译助手图标" align="left" style="margin-right: 12px;" />

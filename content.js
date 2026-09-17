@@ -58,6 +58,8 @@ const SELECTORS = {
   ].join(",")
 };
 
+const VERSION = "0.2.2"; // 诊断时展示，方便确认用户实际运行的代码版本
+
 let MY_LANG = "zh"; // 标准两字母语言代码（canonical），如 zh / en / ja
 let ENGINE_ACTIVE = false; // 风险告知已同意 且 用户开关处于"启用"，两者都满足才为 true
 
@@ -124,6 +126,29 @@ function showQuotaBanner(message) {
   document.body.appendChild(banner);
 }
 
+let configBannerShown = false;
+
+// 未配置 API Key 等"用户可自行修复"的问题，显示一次性引导横幅
+function showConfigBanner(message) {
+  if (configBannerShown) return;
+  configBannerShown = true;
+
+  const banner = document.createElement("div");
+  banner.id = "wa-translate-config-banner";
+
+  const span = document.createElement("span");
+  span.textContent = `⚠️ ${message}`;
+  banner.appendChild(span);
+
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.textContent = "知道了";
+  closeBtn.addEventListener("click", () => banner.remove());
+  banner.appendChild(closeBtn);
+
+  document.body.appendChild(banner);
+}
+
 // ---------- DOM 适配层：屏蔽 WhatsApp 改版差异 ----------
 
 /**
@@ -174,8 +199,9 @@ function collectIncomingBubbles(root) {
   const pushIfIncoming = (el) => {
     if (seen.has(el)) return;
     seen.add(el);
-    // 已处理过的气泡直接跳过，避免每次扫描都对大量历史消息调用 innerText（触发重排）
-    if (el.dataset.waProcessed) return;
+    // 已成功处理 / 正在请求 / 已失败（等待手动重试）的气泡都跳过，
+    // 避免每次扫描都对历史消息调用 innerText（触发重排）或重复发起 API 请求
+    if (el.dataset.waProcessed || el.dataset.waPending || el.dataset.waError) return;
     if (isIncomingBubble(el) && extractMessageText(el)) {
       result.push(el);
     }
@@ -266,19 +292,28 @@ function showRiskDisclaimer(onAgree) {
 
 async function handleIncomingMessage(bubble) {
   if (bubble.dataset.waProcessed) return;
-  bubble.dataset.waProcessed = "1";
+  if (bubble.dataset.waPending) return; // 同一条消息翻译进行中，防止重复请求
+  bubble.dataset.waPending = "1";
 
   const originalText = extractMessageText(bubble);
-  if (!originalText) return; // 图片/语音/系统提示等非文本消息
+  if (!originalText) {
+    delete bubble.dataset.waPending;
+    return; // 图片/语音/系统提示等非文本消息，不标记 processed，以后出现文本时还能处理
+  }
 
   const chatId = getCurrentChatId();
-  if (!chatId) return;
+  if (!chatId) {
+    delete bubble.dataset.waPending;
+    return;
+  }
 
   try {
     const result = await sendToBackground("translate", {
       text: originalText,
       targetLang: MY_LANG
     });
+    bubble.dataset.waProcessed = "1";
+    removeErrorLine(bubble);
 
     // 记录这个联系人的语言，供发消息时决定翻译建议的目标语言
     if (result.detectedSourceLang) {
@@ -295,12 +330,28 @@ async function handleIncomingMessage(bubble) {
 
     insertTranslationLine(bubble, result.translatedText);
   } catch (err) {
-    if (err.message?.includes("额度上限")) {
-      showQuotaBanner(err.message);
+    const msg = err.message || "未知错误";
+    bubble.dataset.waError = "1"; // 标记失败，扫描时不再自动重试，只能由用户手动重试
+    if (msg.includes("额度上限")) {
+      showQuotaBanner(msg);
+    } else if (msg.includes("尚未配置") || msg.includes("API Key")) {
+      showConfigBanner("翻译功能需要先配置 API Key：请点击浏览器工具栏上的插件图标，填写并保存 DeepL 或 Google 的 API Key。");
+      insertErrorLine(bubble, msg, () => retryMessage(bubble));
     } else {
-      console.warn("[WA翻译插件] 翻译收到的消息失败：", err.message);
+      console.warn("[WA翻译插件] 翻译收到的消息失败：", msg);
+      insertErrorLine(bubble, msg, () => retryMessage(bubble));
     }
+  } finally {
+    delete bubble.dataset.waPending;
   }
+}
+
+// 失败后允许重试：清掉失败标记，重新走一遍翻译流程
+function retryMessage(bubble) {
+  delete bubble.dataset.waProcessed;
+  delete bubble.dataset.waError;
+  removeErrorLine(bubble);
+  handleIncomingMessage(bubble);
 }
 
 function insertTranslationLine(bubble, translatedText) {
@@ -310,6 +361,33 @@ function insertTranslationLine(bubble, translatedText) {
   line.className = "wa-translate-line";
   line.textContent = `🌐 ${translatedText}`;
   bubble.appendChild(line);
+}
+
+function insertErrorLine(bubble, errorMsg, onRetry) {
+  removeErrorLine(bubble);
+
+  const line = document.createElement("div");
+  line.className = "wa-translate-error";
+  line.title = errorMsg; // 鼠标悬停可看到完整错误
+
+  const span = document.createElement("span");
+  span.textContent = "⚠️ 翻译失败，点右侧重试";
+  line.appendChild(span);
+
+  const retryBtn = document.createElement("button");
+  retryBtn.type = "button";
+  retryBtn.textContent = "重试";
+  retryBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    onRetry();
+  });
+  line.appendChild(retryBtn);
+
+  bubble.appendChild(line);
+}
+
+function removeErrorLine(bubble) {
+  bubble.querySelector(".wa-translate-error")?.remove();
 }
 
 // ---------- 全量扫描（初始加载 / 切换聊天 / 新增节点兜底） ----------
@@ -460,18 +538,26 @@ document.addEventListener(
 const observer = new MutationObserver((mutations) => {
   if (!ENGINE_ACTIVE) return;
 
-  let hasPotentialMessage = false;
+  let needFullScan = false;
   for (const mutation of mutations) {
     for (const node of mutation.addedNodes) {
       if (node.nodeType !== Node.ELEMENT_NODE) continue;
-      // 快速预判：先只在新增节点内部找，找不到再靠防抖全量扫描兜底
+      // 快速预判：先只在新增节点内部找
       const bubbles = collectIncomingBubbles(node);
       for (const b of bubbles) handleIncomingMessage(b);
-      if (bubbles.length) hasPotentialMessage = true;
+      if (bubbles.length) continue;
+      // 新增节点本身可能是消息列表的中间包装层：只有当它看起来与聊天面板相关时，
+      // 才触发防抖全量扫描兜底，避免 WhatsApp 其他区域的频繁变动造成性能浪费
+      if (
+        node.closest?.("#main") ||
+        node.querySelector?.("#main") ||
+        node.matches?.('[role="row"], [role="application"], div[data-testid]')
+      ) {
+        needFullScan = true;
+      }
     }
   }
-  // 新增节点是消息列表的中间包装层时，上面可能匹配不到，防抖全量扫描兜底
-  scheduleScan();
+  if (needFullScan) scheduleScan();
 });
 
 // 轮询当前聊天对象，切换聊天时重新扫描（比依赖 DOM 结构更可靠）
@@ -509,54 +595,102 @@ function updateEngineActive(next) {
 
 // ---------- 诊断工具（用户排查时在控制台用） ----------
 
-function runDiagnostics() {
+async function runDiagnostics() {
   const panel = getMainPanel();
+  let settings = null;
+  let settingsError = null;
+  try {
+    settings = await sendToBackground("getSettings", {});
+  } catch (err) {
+    settingsError = err.message;
+  }
+
   const info = {
+    版本: VERSION,
     主面板: !!document.querySelector(SELECTORS.main),
     经典气泡数: document.querySelectorAll(SELECTORS.bubbles).length,
     role行数量: document.querySelectorAll(SELECTORS.rowsFallback).length,
-    识别到的收到消息数: collectIncomingBubbles(panel).length,
+    待翻译消息数: collectIncomingBubbles(panel).length,
+    已成功处理数: panel.querySelectorAll("[data-wa-processed]").length,
+    失败消息数: panel.querySelectorAll("[data-wa-error]").length,
     输入框: !!document.querySelector(SELECTORS.composeBox),
-    底部输入区: !!document.querySelector(SELECTORS.footer),
     聊天标题: getCurrentChatId(),
     目标语言: MY_LANG,
-    插件已启用: ENGINE_ACTIVE
+    插件已启用: ENGINE_ACTIVE,
+    翻译引擎: settings?.engine ?? `读取失败: ${settingsError}`,
+    DeepL_Key已配置: !!(settings?.deeplKey),
+    Google_Key已配置: !!(settings?.googleKey)
   };
   console.table(info);
+
+  if (!settings) {
+    console.warn("[WA翻译插件] 无法连接后台 Service Worker（getSettings 失败）。请到 chrome://extensions 点击本插件的刷新箭头，再刷新 WhatsApp 页面。错误：", settingsError);
+  } else if (settings.engine === "deepl" && !settings.deeplKey) {
+    console.warn("[WA翻译插件] 当前使用 DeepL 引擎，但还没有填写 DeepL API Key。请点浏览器工具栏的插件图标填写并保存。");
+  } else if (settings.engine === "google" && !settings.googleKey) {
+    console.warn("[WA翻译插件] 当前使用 Google 引擎，但还没有填写 Google API Key。请点浏览器工具栏的插件图标填写并保存。");
+  }
   if (info.经典气泡数 === 0 && info.role行数量 === 0) {
     console.warn("[WA翻译插件] 没有找到任何消息节点——请先打开一个聊天窗口再运行诊断；如果已打开仍为 0，说明 WhatsApp 再次改版，请到 GitHub 反馈。");
   }
   return info;
 }
 
+// 直接发一条测试翻译，验证"插件后台 → 翻译 API → 网络"整条链路
+async function testApi() {
+  console.log("[WA翻译插件] 正在发起测试翻译（Hello → 目标语言）…");
+  try {
+    const result = await sendToBackground("translate", { text: "Hello", targetLang: MY_LANG });
+    console.log("%c[WA翻译插件] API 测试成功：", "color:#16a34a", result);
+    return result;
+  } catch (err) {
+    console.error("[WA翻译插件] API 测试失败：", err.message);
+    console.error("[WA翻译插件] 常见原因：① Key 填错/没保存 ② 网络或 VPN 无法访问翻译 API ③ DeepL 免费版 Key 用了付费版主机（或相反）④ 额度用尽");
+    throw err;
+  }
+}
+
 // 暴露到 window，用户可在控制台执行 __waTranslate.debug() 自助排查
-window.__waTranslate = { debug: runDiagnostics, scan: scanVisibleMessages };
+window.__waTranslate = {
+  version: VERSION,
+  debug: runDiagnostics,
+  testApi,
+  scan: scanVisibleMessages
+};
 
 async function init() {
-  await loadMyLang();
+  // init 里任何一步失败都不能让整个插件"静默死亡"，否则用户只会看到"毫无反应"
+  try {
+    await loadMyLang();
 
-  const { riskAcknowledged, enabled } = await chrome.storage.local.get(["riskAcknowledged", "enabled"]);
-  const isEnabled = enabled !== false; // 未设置过时默认开启
+    const { riskAcknowledged, enabled } = await chrome.storage.local.get(["riskAcknowledged", "enabled"]);
+    const isEnabled = enabled !== false; // 未设置过时默认开启
 
-  if (!riskAcknowledged) {
-    showRiskDisclaimer(() => updateEngineActive(isEnabled));
-  } else {
-    updateEngineActive(isEnabled);
+    if (!riskAcknowledged) {
+      showRiskDisclaimer(() => updateEngineActive(isEnabled));
+    } else {
+      updateEngineActive(isEnabled);
+    }
+
+    // 监听设置面板里的开关变化，实时生效，不用刷新页面
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== "local") return;
+      if (changes.enabled) {
+        updateEngineActive(changes.enabled.newValue !== false);
+      }
+      if (changes.myLang) {
+        MY_LANG = changes.myLang.newValue || MY_LANG;
+      }
+    });
+
+    console.log(`[WA翻译插件] 已加载 v${VERSION}，目标语言：`, MY_LANG);
+    console.log("[WA翻译插件] 如翻译未出现，可在控制台执行 __waTranslate.debug() 查看诊断，或 __waTranslate.testApi() 测试 API");
+  } catch (err) {
+    console.error("[WA翻译插件] 初始化失败：", err);
+    showConfigBanner(
+      `插件初始化失败（${err.message || "未知错误"}）。请在 chrome://extensions 点本插件的刷新箭头，再刷新 WhatsApp 页面；仍失败请把控制台截图反馈到 GitHub Issues。`
+    );
   }
-
-  // 监听设置面板里的开关变化，实时生效，不用刷新页面
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area !== "local") return;
-    if (changes.enabled) {
-      updateEngineActive(changes.enabled.newValue !== false);
-    }
-    if (changes.myLang) {
-      MY_LANG = changes.myLang.newValue || MY_LANG;
-    }
-  });
-
-  console.log("[WA翻译插件] 已加载，目标语言：", MY_LANG);
-  console.log("[WA翻译插件] 如翻译未出现，可在控制台执行 __waTranslate.debug() 查看诊断信息");
 }
 
 init();
