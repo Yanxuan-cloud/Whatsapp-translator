@@ -28,6 +28,9 @@ test-keys.json
 icons/icon_source.*
 issue-report.html
 
+# 营销/宣传素材（本地保留，不上传仓库）
+promotion/
+
 # 日志
 *.log
 npm-debug.log*
