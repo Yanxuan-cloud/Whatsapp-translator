@@ -1,19 +1,25 @@
 /* ---------- 译文行（收消息） ---------- */
 .wa-translate-line {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
   margin-top: 4px;
   padding-top: 4px;
   border-top: 1px dashed rgba(0, 0, 0, 0.15);
   font-size: 13px;
+  line-height: 1.45;
   color: rgba(0, 0, 0, 0.55);
   font-style: italic;
   white-space: pre-wrap;
+  word-break: break-word;
 }
 
-/* WhatsApp Web 深色模式适配 */
+/* WhatsApp Web 深色模式适配（class 与 data-theme 两种写法都覆盖） */
 body.dark .wa-translate-line,
-.dark .wa-translate-line {
+.dark .wa-translate-line,
+[data-theme="dark"] .wa-translate-line {
   border-top-color: rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, 0.6);
 }
 
 /* ---------- 额度警告横幅 ---------- */
@@ -72,27 +78,31 @@ body.dark .wa-translate-line,
   color: #fff;
 }
 
-/* 深色模式适配建议条 */
+/* 深色模式适配建议条（class 与 data-theme 两种写法都覆盖） */
 body.dark .wa-translate-suggest-box,
-.dark .wa-translate-suggest-box {
+.dark .wa-translate-suggest-box,
+[data-theme="dark"] .wa-translate-suggest-box {
   background: #1a2826;
   border-color: #2d4a45;
 }
 
 body.dark .wa-translate-suggest-text,
-.dark .wa-translate-suggest-text {
+.dark .wa-translate-suggest-text,
+[data-theme="dark"] .wa-translate-suggest-text {
   color: #e0e0e0;
 }
 
 body.dark .wa-translate-suggest-copy,
-.dark .wa-translate-suggest-copy {
+.dark .wa-translate-suggest-copy,
+[data-theme="dark"] .wa-translate-suggest-copy {
   background: #2a3a38;
   border-color: #3d6b62;
   color: #6dd4c0;
 }
 
 body.dark .wa-translate-suggest-copy:hover,
-.dark .wa-translate-suggest-copy:hover {
+.dark .wa-translate-suggest-copy:hover,
+[data-theme="dark"] .wa-translate-suggest-copy:hover {
   background: #3d6b62;
   color: #fff;
 }

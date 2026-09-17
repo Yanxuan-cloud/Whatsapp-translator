@@ -2,6 +2,19 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)。
 
+## [0.2.1] - 2026-09
+
+### 修复（关键）
+- 修复 WhatsApp Web 改版后插件加载正常但翻译不出现的问题：消息/文本/输入框/标题选择器全部改为多策略匹配，优先使用抗变化的 `data-testid` / `role` 属性，再回退到传统 class
+- 新增 `[role="row"]` 兜底识别：即使 WhatsApp 混淆掉 `message-in/out` class，仍能识别消息，并通过"已发送对勾图标"区分收发方向
+- 修复 SPA 切换聊天后 MutationObserver 挂在已移除的 `#main` 节点上导致永久失效的问题，改为监听 `document.body`
+- 修复打开聊天时已存在的历史消息不会被翻译的问题，现在启用时和切换聊天后会自动补扫
+- 提取消息正文时排除引用回复内容，避免把被引用的消息一起送去翻译
+- 深色模式适配补充 `data-theme="dark"` 选择器
+
+### 新增
+- 诊断工具：在 WhatsApp Web 页面控制台执行 `__waTranslate.debug()` 可查看消息节点、输入框、标题等识别情况，方便自助排查和反馈问题
+
 ## [0.2.0] - 2026-09
 
 ### 新增
